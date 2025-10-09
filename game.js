@@ -50,16 +50,25 @@ const KEYMAP = {
   ArrowLeft:'left', ArrowRight:'right', Space:'jump',
   KeyZ:'fire_rifle', KeyX:'fire_smg', KeyC:'fire_gl', KeyV:'fire_shot'
 };
+
+// キー入力
 window.addEventListener('keydown', (e)=>{
   const k = KEYMAP[e.code]; if (k) { input[k]=true; e.preventDefault(); }
 });
 window.addEventListener('keyup', (e)=>{
   const k = KEYMAP[e.code]; if (k) { input[k]=false; e.preventDefault(); }
 });
+
+// タッチボタン（スクロール抑制）
+const phone = document.getElementById('phone');
+['touchstart','touchmove','touchend','gesturestart'].forEach(type=>{
+  phone.addEventListener(type, (ev)=>{ ev.preventDefault(); }, {passive:false});
+});
+
 document.querySelectorAll('button[data-key]').forEach(btn=>{
   const code = btn.getAttribute('data-key'); const k = KEYMAP[code];
   const on = (v)=>{ input[k]=v; if (code==='Space' && !v) input.jump=false; };
-  btn.addEventListener('touchstart', e=>{ on(true); e.preventDefault(); }, {passive:false});
+  btn.addEventListener('touchstart', e=>{ on(true);  e.preventDefault(); }, {passive:false});
   btn.addEventListener('touchend',   e=>{ on(false); e.preventDefault(); }, {passive:false});
   btn.addEventListener('mousedown',  e=>{ on(true); });
   btn.addEventListener('mouseup',    e=>{ on(false); });
@@ -228,10 +237,4 @@ function loop(t) {
 // 初期化
 function init(){
   // v10 表示
-  HUD.version.textContent = VERSION;
-
-  world.updateAmmoHUD(world.player.weapons);
-  spawnBricks();
-  requestAnimationFrame(loop);
-}
-init();
+  HUD.vers
