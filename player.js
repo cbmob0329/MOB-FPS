@@ -12,16 +12,19 @@ export class Asset {
 }
 
 export const ASSETS = {
+  // プレイヤー
   fp: new Asset('fp.png'),
   fp1: new Asset('fp1.png'),
   fp2: new Asset('fp2.png'),
   fp3: new Asset('fp3.png'),
   fp4: new Asset('fp4.png'),
   fp5: new Asset('fp5.png'),
-  ta1: new Asset('TA1.png'),
-  ta2: new Asset('TA2.png'),
-  ta3: new Asset('TA3.png'),
-  ta4: new Asset('TA4.png'),
+  // 弾の見た目（各武器の弾画像）
+  ta1: new Asset('TA1.png'), // ライフル弾
+  ta2: new Asset('TA2.png'), // マシンガン弾
+  ta3: new Asset('TA3.png'), // グレネード弾
+  ta4: new Asset('TA4.png'), // ショットガン弾（ペレット）
+  // エフェクト
   explosion: new Asset('moe.png'),
   smoke: new Asset('moku.png'),
 };
@@ -35,17 +38,16 @@ export class Timer {
 }
 
 export class Bullet {
-  constructor({ x, y, vx, vy = 0, life = 0.9, dmg = 8, kind = 'rifle', size = 3 }) {
+  constructor({ x, y, vx, vy = 0, life = 0.9, dmg = 8, kind = 'rifle' }) {
     this.x = x; this.y = y; this.vx = vx; this.vy = vy;
-    this.life = life; this.t = 0; this.dmg = dmg; this.kind = kind; this.size = size; // 基本小さめ
+    this.life = life; this.t = 0; this.dmg = dmg; this.kind = kind;
     this.dead = false;
-    this.trail = []; // 簡易トレーサー
+    this.trail = []; // トレーサー（控えめ）
   }
   step(dt) {
     this.t += dt;
-    // トレイル
     this.trail.push({x:this.x, y:this.y});
-    if (this.trail.length > 6) this.trail.shift();
+    if (this.trail.length > 5) this.trail.shift();
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
@@ -55,11 +57,11 @@ export class Bullet {
   draw(ctx, camX) {
     const sx = Math.floor(this.x - camX), sy = Math.floor(this.y);
 
-    // トレイル（薄い線）
+    // 1) 細いトレーサー（控えめ・画像の邪魔をしない）
     if (this.trail.length >= 2) {
       ctx.save();
-      ctx.globalAlpha = 0.6;
-      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(Math.floor(this.trail[0].x - camX), Math.floor(this.trail[0].y));
       for (let i=1;i<this.trail.length;i++){
@@ -70,28 +72,28 @@ export class Bullet {
       ctx.restore();
     }
 
-    ctx.save();
+    // 2) 画像で弾を描画（無ければフォールバックの点）
+    let img = null, w = 10, h = 10; // 基本「小さめ」
     switch (this.kind) {
-      case 'rifle':
-        ctx.fillStyle = '#bbdefb';
-        ctx.fillRect(sx, sy, this.size, this.size);
-        break;
-      case 'smg':
-        ctx.fillStyle = '#e1f5fe';
-        ctx.fillRect(sx, sy, this.size, this.size);
-        break;
-      case 'shot':
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(sx, sy, this.size+0.5, this.size+0.5);
-        break;
-      case 'grenade':
-        ctx.fillStyle = '#fff59d';   // グレは他より大きめ
-        ctx.beginPath();
-        ctx.arc(sx, sy, this.size+2, 0, Math.PI * 2);
-        ctx.fill();
-        break;
+      case 'rifle': img = ASSETS.ta1; w = h = 10; break;          // ライフル：小粒
+      case 'smg':   img = ASSETS.ta2; w = h = 10; break;          // マシンガン：小粒
+      case 'shot':  img = ASSETS.ta4; w = h = 9;  break;          // ショットガン：さらに小粒
+      case 'grenade': img = ASSETS.ta3; w = h = 16; break;        // グレ：他より大きめ
     }
-    ctx.restore();
+
+    if (img && img.ok) {
+      // 弾画像をセンター合わせで描画
+      ctx.drawImage(img.img, sx - (w>>1), sy - (h>>1), w, h);
+    } else {
+      // フォールバック（点）
+      ctx.save();
+      ctx.fillStyle = (this.kind==='grenade') ? '#fff59d' : '#bbdefb';
+      const r = (this.kind==='grenade') ? 4 : 2.5;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 }
 
@@ -149,12 +151,12 @@ export class Player {
     this.frameTimer = 0;
     this.frameIdx = 0;
 
-    // 武器（ご指定値で再設定）
+    // —— 武器（指定値で統一）——
     this.weapons = {
-      rifle: { dmg: 12, rate: 0.50, ammoMax: 8, ammo: 8, reload: 2.3, speed: 960, range: 2.2 }, // 長距離・遅い
-      smg:   { dmg: 8,  rate: 0.15, ammoMax:12, ammo:12, reload: 2.0, speed: 820, range: 1.1 }, // 普通
-      gl:    { dmg: 50, rate: 1.00, ammoMax: 3, ammo: 3, reload: 5.0, speed: 520, range: 0.6 }, // 短距離・とても遅い
-      shot:  { dmg: 15, rate: 0.25, ammoMax: 9, ammo: 9, reload: 3.0, speed: 760, range: 0.5 }, // 短距離・やや遅め
+      rifle: { dmg:12, rate:0.50, ammoMax:8,  ammo:8,  reload:2.3, speed:960, range:2.4 }, // 長い
+      smg:   { dmg:8,  rate:0.15, ammoMax:12, ammo:12, reload:2.0, speed:820, range:1.2 }, // 普通
+      gl:    { dmg:50, rate:1.00, ammoMax:3,  ammo:3,  reload:5.0, speed:520, range:0.6 }, // 短い
+      shot:  { dmg:15, rate:0.25, ammoMax:9,  ammo:9,  reload:3.0, speed:760, range:0.35 },// とても短い
     };
     this.cool = { rifle: new Timer(), smg: new Timer(), gl: new Timer(), shot: new Timer() };
     this.reload = { rifle:0, smg:0, gl:0, shot:0 };
@@ -173,10 +175,7 @@ export class Player {
     if (this.vx !== 0) this.face = Math.sign(this.vx);
 
     // ジャンプ
-    if (input.jump && this.onGround) {
-      this.vy = this.jumpPower;
-      this.onGround = false;
-    }
+    if (input.jump && this.onGround) { this.vy = this.jumpPower; this.onGround = false; }
 
     // 重力
     this.vy += 1200 * dt;
@@ -186,9 +185,7 @@ export class Player {
     this.y += this.vy * dt;
 
     // 地面
-    if (this.y >= GROUND_Y) {
-      this.y = GROUND_Y; this.vy = 0; this.onGround = true;
-    }
+    if (this.y >= GROUND_Y) { this.y = GROUND_Y; this.vy = 0; this.onGround = true; }
 
     // アニメ
     this.anim = (Math.abs(this.vx) > 1) ? 'move' : 'idle';
@@ -222,31 +219,34 @@ export class Player {
     switch (kind) {
       case 'rifle': {
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'rifle', size:3
+          x: muzzleX, y: muzzleY, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'rifle'
         }));
         break;
       }
       case 'smg': {
+        // 少しだけ上下にバラす
         const spread = (Math.random()-0.5) * 20;
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY + spread*0.02, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'smg', size:3
+          x: muzzleX, y: muzzleY + spread*0.02, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'smg'
         }));
         break;
       }
       case 'gl': {
+        // 放物線
         const vy = -420 + (Math.random()-0.5)*40;
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY, vx: dir * w.speed*0.6, vy, life: w.range, dmg: w.dmg, kind:'grenade', size:5
+          x: muzzleX, y: muzzleY, vx: dir * w.speed*0.6, vy, life: w.range, dmg: w.dmg, kind:'grenade'
         }));
         break;
       }
       case 'shot': {
+        // 3ペレット（とても短い距離）
         for (let i=0;i<3;i++){
-          const ang = (Math.random()-0.5)*0.22;
+          const ang = (Math.random()-0.5)*0.22; // 拡散
           const vx = Math.cos(ang) * w.speed * dir;
           const vy = Math.sin(ang) * w.speed * 0.12;
           world.spawnBullet(new Bullet({
-            x: muzzleX, y: muzzleY, vx, vy, life: w.range, dmg: w.dmg, kind:'shot', size:3.2
+            x: muzzleX, y: muzzleY, vx, vy, life: w.range, dmg: w.dmg, kind:'shot'
           }));
         }
         break;
