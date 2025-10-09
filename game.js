@@ -1,6 +1,8 @@
 // game.js (ES Modules)
 import { Player, Explosion, Smoke, ASSETS, GROUND_Y } from './player.js';
 
+const VERSION = 'v10';
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
@@ -10,6 +12,7 @@ const HUD = {
   gl: document.getElementById('ammo_gl'),
   shot: document.getElementById('ammo_shot'),
   reload: document.getElementById('reloadText'),
+  version: document.getElementById('version'),
 };
 
 const W = canvas.width;    // 420
@@ -155,7 +158,7 @@ function rectHit(b, r){
 function handleCollisions(){
   for (const b of world.bullets){
     if (b.dead) continue;
-    // 地面（グレ）
+    // 地面（グレは必ず着弾→爆発）
     if (b.kind === 'grenade' && b.y >= GROUND_Y - 6){
       b.dead = true;
       world.spawnExplosion(b.x, GROUND_Y - 12);
@@ -224,6 +227,9 @@ function loop(t) {
 
 // 初期化
 function init(){
+  // v10 表示
+  HUD.version.textContent = VERSION;
+
   world.updateAmmoHUD(world.player.weapons);
   spawnBricks();
   requestAnimationFrame(loop);
