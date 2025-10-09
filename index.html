@@ -2,10 +2,13 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <title>MOB FPS – Side Action v10</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+  />
+  <title>MOB FPS – Side Action v11</title>
   <meta name="theme-color" content="#0b0c10" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=11" />
 </head>
 <body>
   <div id="root">
@@ -19,32 +22,31 @@
             <div class="slot"><span>●</span><b id="ammo_gl">3</b></div>
             <div class="slot"><span>◎</span><b id="ammo_shot">9</b></div>
           </div>
-          <div class="version" id="version">v10</div>
+          <div class="version" id="version">v11</div>
           <div class="reload" id="reloadText">READY</div>
         </header>
 
-        <!-- ゲーム画面（内部解像度は固定し、CSSスケールでフィット） -->
         <canvas id="game" width="420" height="560" aria-label="game canvas"></canvas>
       </section>
 
-      <!-- 下部：操作パッド（可変高さで常に見える） -->
-      <footer class="pad">
+      <!-- 下部：操作パッド（固定で隠れない） -->
+      <footer class="pad" id="pad">
         <div class="dpad">
           <button class="btn" data-key="ArrowLeft" aria-label="left">◀</button>
           <button class="btn" data-key="ArrowRight" aria-label="right">▶</button>
         </div>
         <div class="apad">
-          <button class="btn act"  data-key="KeyZ"   aria-label="rifle">■</button>
-          <button class="btn act"  data-key="KeyX"   aria-label="smg">▲</button>
-          <button class="btn act"  data-key="KeyC"   aria-label="grenade">●</button>
-          <button class="btn act"  data-key="KeyV"   aria-label="shotgun">◎</button>
-          <button class="btn jump" data-key="Space"  aria-label="jump">×</button>
+          <button class="btn act"  data-key="KeyZ"  aria-label="rifle">■</button>
+          <button class="btn act"  data-key="KeyX"  aria-label="smg">▲</button>
+          <button class="btn act"  data-key="KeyC"  aria-label="grenade">●</button>
+          <button class="btn act"  data-key="KeyV"  aria-label="shotgun">◎</button>
+          <button class="btn jump" data-key="Space" aria-label="jump">×</button>
         </div>
       </footer>
     </div>
   </div>
 
-  <!-- モジュール読み込み（player.jsはgame.jsがimport） -->
-  <script type="module" src="game.js"></script>
+  <!-- 必ず module 指定。クエリでキャッシュ破壊 -->
+  <script type="module" src="game.js?v=11"></script>
 </body>
 </html>
