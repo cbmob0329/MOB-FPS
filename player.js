@@ -35,15 +35,15 @@ export class Timer {
 }
 
 export class Bullet {
-  constructor({ x, y, vx, vy = 0, life = 0.9, dmg = 8, kind = 'rifle', size = 4 }) {
+  constructor({ x, y, vx, vy = 0, life = 0.9, dmg = 8, kind = 'rifle', size = 3 }) {
     this.x = x; this.y = y; this.vx = vx; this.vy = vy;
-    this.life = life; this.t = 0; this.dmg = dmg; this.kind = kind; this.size = size;
+    this.life = life; this.t = 0; this.dmg = dmg; this.kind = kind; this.size = size; // 基本小さめ
     this.dead = false;
     this.trail = []; // 簡易トレーサー
   }
   step(dt) {
     this.t += dt;
-    // トレイル（最後の位置を保持）
+    // トレイル
     this.trail.push({x:this.x, y:this.y});
     if (this.trail.length > 6) this.trail.shift();
 
@@ -58,8 +58,8 @@ export class Bullet {
     // トレイル（薄い線）
     if (this.trail.length >= 2) {
       ctx.save();
-      ctx.globalAlpha = 0.65;
-      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.6;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(Math.floor(this.trail[0].x - camX), Math.floor(this.trail[0].y));
       for (let i=1;i<this.trail.length;i++){
@@ -74,20 +74,20 @@ export class Bullet {
     switch (this.kind) {
       case 'rifle':
         ctx.fillStyle = '#bbdefb';
-        ctx.fillRect(sx, sy, this.size+1, this.size+1);
+        ctx.fillRect(sx, sy, this.size, this.size);
         break;
       case 'smg':
         ctx.fillStyle = '#e1f5fe';
-        ctx.fillRect(sx, sy, this.size+1, this.size+1);
+        ctx.fillRect(sx, sy, this.size, this.size);
         break;
       case 'shot':
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(sx, sy, this.size+1.5, this.size+1.5);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx, sy, this.size+0.5, this.size+0.5);
         break;
       case 'grenade':
-        ctx.fillStyle = '#fff59d';
+        ctx.fillStyle = '#fff59d';   // グレは他より大きめ
         ctx.beginPath();
-        ctx.arc(sx, sy, this.size, 0, Math.PI * 2);
+        ctx.arc(sx, sy, this.size+2, 0, Math.PI * 2);
         ctx.fill();
         break;
     }
@@ -149,12 +149,12 @@ export class Player {
     this.frameTimer = 0;
     this.frameIdx = 0;
 
-    // 武器（指定どおり）
+    // 武器（ご指定値で再設定）
     this.weapons = {
-      rifle: { dmg: 12, rate: 0.28, ammoMax: 8, ammo: 8, reload: 2.3, speed: 960, range: 1.6 },
-      smg:   { dmg: 8,  rate: 0.12, ammoMax:12, ammo:12, reload: 2.0, speed: 820, range: 1.1 },
-      gl:    { dmg: 50, rate: 0.7,  ammoMax: 3, ammo: 3, reload: 5.0, speed: 520, range: 1.2 },
-      shot:  { dmg: 15, rate: 0.20, ammoMax: 9, ammo: 9, reload: 3.0, speed: 760, range: 0.5 },
+      rifle: { dmg: 12, rate: 0.50, ammoMax: 8, ammo: 8, reload: 2.3, speed: 960, range: 2.2 }, // 長距離・遅い
+      smg:   { dmg: 8,  rate: 0.15, ammoMax:12, ammo:12, reload: 2.0, speed: 820, range: 1.1 }, // 普通
+      gl:    { dmg: 50, rate: 1.00, ammoMax: 3, ammo: 3, reload: 5.0, speed: 520, range: 0.6 }, // 短距離・とても遅い
+      shot:  { dmg: 15, rate: 0.25, ammoMax: 9, ammo: 9, reload: 3.0, speed: 760, range: 0.5 }, // 短距離・やや遅め
     };
     this.cool = { rifle: new Timer(), smg: new Timer(), gl: new Timer(), shot: new Timer() };
     this.reload = { rifle:0, smg:0, gl:0, shot:0 };
@@ -222,21 +222,21 @@ export class Player {
     switch (kind) {
       case 'rifle': {
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'rifle', size:4
+          x: muzzleX, y: muzzleY, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'rifle', size:3
         }));
         break;
       }
       case 'smg': {
-        const spread = (Math.random()-0.5) * 22;
+        const spread = (Math.random()-0.5) * 20;
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY + spread*0.02, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'smg', size:4
+          x: muzzleX, y: muzzleY + spread*0.02, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'smg', size:3
         }));
         break;
       }
       case 'gl': {
         const vy = -420 + (Math.random()-0.5)*40;
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY, vx: dir * w.speed*0.6, vy, life: w.range+0.3, dmg: w.dmg, kind:'grenade', size:6
+          x: muzzleX, y: muzzleY, vx: dir * w.speed*0.6, vy, life: w.range, dmg: w.dmg, kind:'grenade', size:5
         }));
         break;
       }
@@ -246,7 +246,7 @@ export class Player {
           const vx = Math.cos(ang) * w.speed * dir;
           const vy = Math.sin(ang) * w.speed * 0.12;
           world.spawnBullet(new Bullet({
-            x: muzzleX, y: muzzleY, vx, vy, life: w.range, dmg: w.dmg, kind:'shot', size:4.2
+            x: muzzleX, y: muzzleY, vx, vy, life: w.range, dmg: w.dmg, kind:'shot', size:3.2
           }));
         }
         break;
