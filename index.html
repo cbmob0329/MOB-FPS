@@ -6,10 +6,26 @@
   <title>MOB FPS – Side Action (MetalSlug-like Base)</title>
   <meta name="theme-color" content="#0b0c10" />
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* デバッグ用の簡易パネル（必要なら後で削除OK） */
+    #debug{
+      position:absolute;left:8px;top:8px;z-index:10;
+      background:#0c1220cc;color:#d7e6ff;border:1px solid #204060;border-radius:8px;
+      padding:6px 8px;font:12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      max-width: calc(100% - 16px);
+    }
+    #debug .err{margin-top:4px;background:#4d0f14cc;border:1px solid #b71c1c;color:#ffdada;padding:4px;border-radius:6px;white-space:pre-wrap}
+  </style>
 </head>
 <body>
   <div id="root">
     <div id="phone">
+      <div id="debug">
+        <div><b>Status:</b> BOOT</div>
+        <div id="dbgInfo"></div>
+        <div id="dbgErr" class="err" style="display:none"></div>
+      </div>
+
       <header class="hud">
         <div class="ammo">
           <div class="slot"><span>■</span><b id="ammo_rifle">8</b></div>
@@ -20,7 +36,7 @@
         <div class="reload" id="reloadText">READY</div>
       </header>
 
-      <canvas id="game" width="420" height="720"></canvas>
+      <canvas id="game" width="420" height="720" aria-label="game canvas"></canvas>
 
       <footer class="pad">
         <div class="dpad">
@@ -38,7 +54,24 @@
     </div>
   </div>
 
-  <!-- 重要：モジュールとして読み込む。player.jsはgame.js内でimportされるのでここでは読み込まない -->
+  <!-- 重要：ESMで読み込む。player.jsはgame.jsの中でimport -->
   <script type="module" src="game.js"></script>
+  <script>
+    // 画面にエラーを出す（CORS/404/構文/実行時）
+    const dbgErr = document.getElementById('dbgErr');
+    const dbgInfo = document.getElementById('dbgInfo');
+    window.addEventListener('error', (e)=>{
+      dbgErr.style.display='block';
+      dbgErr.textContent = `Error: ${e.message}\nSource: ${e.filename}\nLine: ${e.lineno}:${e.colno}`;
+      console.error(e);
+    });
+    window.addEventListener('unhandledrejection', (e)=>{
+      dbgErr.style.display='block';
+      dbgErr.textContent = `Unhandled Promise: ${e.reason && (e.reason.stack || e.reason)}`;
+      console.error(e);
+    });
+    // ファイルの位置関係のヒント
+    dbgInfo.textContent = `Expect files here → ./index.html, ./style.css, ./game.js, ./player.js`;
+  </script>
 </body>
 </html>
