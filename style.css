@@ -1,39 +1,69 @@
 :root{
-  --stage-w:420px; --stage-h:720px;
-  --hud-bg:#0b0f17cc; --fg:#e9eef7; --grid-gap:10px;
+  /* 端末フレーム想定サイズ */
+  --stage-w:420px; 
+  --stage-h:720px;
+
+  /* 上下のグリッド配分：上(プレイ)＝1fr / 下(操作)＝auto */
+  --controls-h: 160px; /* 下部の操作エリア固定高さ */
+
+  --hud-bg:#0b0f17cc; 
+  --fg:#e9eef7; 
+  --grid-gap:10px;
 }
 *{box-sizing:border-box;touch-action:manipulation}
 html,body{height:100%;margin:0;background:#000;color:var(--fg);font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial}
 #root{position:fixed;inset:0;display:grid;place-items:center}
 #phone{
-  width:var(--stage-w);height:var(--stage-h);position:relative;overflow:hidden;
-  background:#070b12;border:1px solid #101827;border-radius:16px;box-shadow:0 18px 48px rgba(0,0,0,.5);
+  width:var(--stage-w);
+  height:var(--stage-h);
+  display:grid;
+  grid-template-rows: 1fr var(--controls-h);
+  background:#070b12;
+  border:1px solid #101827;
+  border-radius:16px;
+  box-shadow:0 18px 48px rgba(0,0,0,.5);
+  overflow:hidden;
+}
+
+/* 上部プレイ領域 */
+#playArea{
+  position:relative;
+  overflow:hidden;
+  background:#000;
 }
 canvas#game{
-  position:absolute;inset:0;margin:auto;image-rendering:pixelated;image-rendering:crisp-edges;
+  width:100%;
+  height:100%;
+  display:block;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
   background:#000;
 }
 header.hud{
-  position:absolute;left:0;right:0;top:0;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;
+  position:absolute;left:0;right:0;top:0;
+  padding:8px 10px;display:flex;align-items:center;justify-content:space-between;
   background:var(--hud-bg);backdrop-filter:blur(4px);z-index:3
 }
 header .ammo{display:flex;gap:10px}
 header .slot{
-  display:flex;gap:6px;align-items:center;padding:4px 8px;border:1px solid #203047;border-radius:10px;background:#0d1523cc
+  display:flex;gap:6px;align-items:center;
+  padding:4px 8px;border:1px solid #203047;border-radius:10px;background:#0d1523cc
 }
 header .slot span{font-weight:900;letter-spacing:.05em}
 header .slot b{min-width:22px;display:inline-block;text-align:right}
 header .reload{font-weight:700;opacity:.9}
 
+/* 下部操作領域 */
 footer.pad{
-  position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.55));
-  display:flex;justify-content:space-between;gap:14px;z-index:3
+  display:flex;justify-content:space-between;gap:14px;
+  padding:10px;
+  background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.7));
 }
-.dpad{display:flex;gap:8px}
-.apad{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.dpad{display:flex;gap:8px;align-items:end}
+.apad{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end}
 .btn{
-  padding:10px 12px;border-radius:14px;border:1px solid #27364b;background:#0d1523cc;color:#dbe7ff;font-size:16px;
-  box-shadow:0 6px 16px rgba(0,0,0,.35);min-width:48px
+  padding:12px 12px;border-radius:14px;border:1px solid #27364b;background:#0d1523cc;color:#dbe7ff;font-size:16px;
+  box-shadow:0 6px 16px rgba(0,0,0,.35);min-width:56px;min-height:44px
 }
 .btn:active{transform:translateY(1px);filter:brightness(1.1)}
 .btn.act{font-weight:800}
