@@ -93,7 +93,7 @@ class Brick {
     if (this.dead) ctx.globalAlpha = Math.max(0, 1 - this.fade);
     if (asset.ok) ctx.drawImage(asset.img, dx, dy, this.w, this.h);
     else {
-      // フォールバックで判別しやすい色
+      // フォールバック色
       ctx.fillStyle = key==='ren1' ? '#ffb74d' : key==='ren2' ? '#ff7043' : key==='ren3' ? '#ef5350' : '#ffffff';
       ctx.fillRect(dx, dy, this.w, this.h);
     }
@@ -155,7 +155,7 @@ function rectHit(b, r){
 function handleCollisions(){
   for (const b of world.bullets){
     if (b.dead) continue;
-    // 地面
+    // 地面（グレ）
     if (b.kind === 'grenade' && b.y >= GROUND_Y - 6){
       b.dead = true;
       world.spawnExplosion(b.x, GROUND_Y - 12);
