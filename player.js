@@ -1,5 +1,5 @@
 // player.js
-// 銃口から正しい位置で弾を出す & マズルフラッシュ追加
+// 弾は各武器の画像(TA1~4.png)。銃口オフセットから発射、グレは必ず落ちる弾道。
 
 export class Asset {
   constructor(src) {
@@ -19,11 +19,11 @@ export const ASSETS = {
   fp3: new Asset('fp3.png'),
   fp4: new Asset('fp4.png'),
   fp5: new Asset('fp5.png'),
-  // 弾の見た目（各武器の弾画像）
-  ta1: new Asset('TA1.png'), // ライフル弾
-  ta2: new Asset('TA2.png'), // マシンガン弾
-  ta3: new Asset('TA3.png'), // グレネード弾
-  ta4: new Asset('TA4.png'), // ショットガン弾（ペレット）
+  // 弾の見た目
+  ta1: new Asset('TA1.png'), // ライフル
+  ta2: new Asset('TA2.png'), // マシンガン
+  ta3: new Asset('TA3.png'), // グレネード
+  ta4: new Asset('TA4.png'), // ショットガン
   // エフェクト
   explosion: new Asset('moe.png'),
   smoke: new Asset('moku.png'),
@@ -42,7 +42,7 @@ export class Bullet {
     this.x = x; this.y = y; this.vx = vx; this.vy = vy;
     this.life = life; this.t = 0; this.dmg = dmg; this.kind = kind;
     this.dead = false;
-    this.trail = [];
+    this.trail = []; // 控えめトレーサー
   }
   step(dt) {
     this.t += dt;
@@ -50,13 +50,17 @@ export class Bullet {
     if (this.trail.length > 5) this.trail.shift();
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    if (this.kind === 'grenade') this.vy += 980 * dt * 0.5;
+
+    // グレはしっかり落ちる（重力強め）
+    if (this.kind === 'grenade') {
+      this.vy += 980 * dt;   // 強い重力
+    }
     if (this.t >= this.life) this.dead = true;
   }
   draw(ctx, camX) {
     const sx = Math.floor(this.x - camX), sy = Math.floor(this.y);
 
-    // 控えめトレーサー（画像の邪魔にならない）
+    // トレーサー：画像の邪魔をしない薄さ
     if (this.trail.length >= 2) {
       ctx.save();
       ctx.globalAlpha = 0.35; ctx.lineWidth = 1;
@@ -70,7 +74,7 @@ export class Bullet {
       ctx.restore();
     }
 
-    // 画像で弾を描画（無ければフォールバックの点）
+    // 弾画像（なければ点）
     let img = null, w = 10, h = 10;
     switch (this.kind) {
       case 'rifle':   img = ASSETS.ta1; w = h = 10; break;
@@ -89,7 +93,7 @@ export class Bullet {
   }
 }
 
-// 追加：マズルフラッシュ（発射瞬間の小さな閃光）
+// マズルフラッシュ（発射瞬間の閃光）
 export class MuzzleFlash {
   constructor({ x, y, dir = 1, life = 0.08 }) {
     this.x = x; this.y = y; this.dir = dir; this.life = life; this.t = 0; this.dead = false;
@@ -100,8 +104,7 @@ export class MuzzleFlash {
     ctx.save();
     ctx.globalAlpha = 0.6 * alpha;
     ctx.fillStyle = '#fff7ba';
-    // 小さな三角形を銃口方向に
-    const p1x = this.x - camX + (this.dir>0 ? 0 : 0);
+    const p1x = this.x - camX;
     const p1y = this.y;
     const len = 10;
     ctx.beginPath();
@@ -149,17 +152,16 @@ export class Player {
 
     // 武器（ご指定値）
     this.weapons = {
-      rifle: { dmg:12, rate:0.50, ammoMax:8,  ammo:8,  reload:2.3, speed:960, range:2.4 },
-      smg:   { dmg:8,  rate:0.15, ammoMax:12, ammo:12, reload:2.0, speed:820, range:1.2 },
-      gl:    { dmg:50, rate:1.00, ammoMax:3,  ammo:3,  reload:5.0, speed:520, range:0.6 },
-      shot:  { dmg:15, rate:0.25, ammoMax:9,  ammo:9,  reload:3.0, speed:760, range:0.35 },
+      rifle: { dmg:12, rate:0.50, ammoMax:8,  ammo:8,  reload:2.3, speed:960, range:2.4 }, // 長い
+      smg:   { dmg:8,  rate:0.15, ammoMax:12, ammo:12, reload:2.0, speed:820, range:1.2 }, // 普通
+      gl:    { dmg:50, rate:1.00, ammoMax:3,  ammo:3,  reload:5.0, speed:520, range:0.9 }, // 短い（寿命は少し長め）
+      shot:  { dmg:15, rate:0.25, ammoMax:9,  ammo:9,  reload:3.0, speed:760, range:0.35 },// とても短い
     };
     this.cool = { rifle:new Timer(), smg:new Timer(), gl:new Timer(), shot:new Timer() };
     this.reload = { rifle:0, smg:0, gl:0, shot:0 };
     this.jumpPower = -520; this.moveSpeed = 220;
 
-    // 銃口オフセット（右向き基準 / プレイヤーの「上左原点」からの相対）
-    // 画像(fp4/fp5)での腕位置を想定。必要なら微調整してください。
+    // 銃口オフセット（右向き基準／プレイヤー画像の左上からの相対）
     this.muzzle = {
       rifle: { x: 40, y: 28 },
       smg:   { x: 38, y: 28 },
@@ -195,4 +197,71 @@ export class Player {
     if (input.fire_shot)  this.tryFire('shot', world);
   }
 
-  // 銃口のワールド座標を算出（
+  // 銃口のワールド座標（向きでミラー）
+  getMuzzlePos(kind){
+    const topY = this.getDrawY();
+    const off = this.muzzle[kind] || {x:36,y:28};
+    const mx = (this.face > 0) ? (this.x + off.x) : (this.x + (this.w - off.x));
+    const my = topY + off.y;
+    return { x: mx, y: my };
+  }
+
+  tryFire(kind, world){
+    const w = this.weapons[kind], cd = this.cool[kind];
+    if (this.reload[kind] > 0) return;
+    if (w.ammo <= 0){ this.reload[kind] = w.reload; w.ammo = w.ammoMax; return; }
+    if (!cd.ready(w.rate)) return;
+
+    const dir = this.face;
+    const { x: muzzleX, y: muzzleY } = this.getMuzzlePos(kind);
+
+    switch(kind){
+      case 'rifle':
+        world.bullets.push(new Bullet({ x:muzzleX, y:muzzleY, vx:dir*w.speed, life:w.range, dmg:w.dmg, kind:'rifle' }));
+        break;
+      case 'smg': {
+        const spread = (Math.random()-0.5) * 20;
+        world.bullets.push(new Bullet({ x:muzzleX, y:muzzleY + spread*0.02, vx:dir*w.speed, life:w.range, dmg:w.dmg, kind:'smg' }));
+        break;
+      }
+      case 'gl': {
+        // 低めの山なり：水平を弱め、上方向も弱め → 必ず落ちる
+        const vy = -260 + (Math.random()-0.5)*30;         // 以前より弱い上向き
+        const vx = dir * w.speed * 0.45;                  // 水平も弱め
+        world.bullets.push(new Bullet({ x:muzzleX, y:muzzleY, vx, vy, life:w.range, dmg:w.dmg, kind:'grenade' }));
+        break;
+      }
+      case 'shot':
+        for(let i=0;i<3;i++){
+          const ang = (Math.random()-0.5)*0.22;
+          const vx = Math.cos(ang)*w.speed*dir;
+          const vy = Math.sin(ang)*w.speed*0.12;
+          world.bullets.push(new Bullet({ x:muzzleX, y:muzzleY, vx, vy, life:w.range, dmg:w.dmg, kind:'shot' }));
+        }
+        break;
+    }
+
+    // マズルフラッシュ
+    world.effects.push(new MuzzleFlash({ x: muzzleX, y: muzzleY, dir }));
+
+    w.ammo--;
+    this.anim = 'shoot';
+    this.frameIdx = 0;
+    this.frameTimer = 0;
+    world.updateAmmoHUD(this.weapons);
+  }
+
+  draw(ctx, camX){
+    ctx.save();
+    ctx.translate(Math.floor(this.x - camX), Math.floor(this.getDrawY()));
+    if (this.face < 0){ ctx.scale(-1,1); ctx.translate(-this.w,0); }
+
+    let sprite = ASSETS.fp;
+    if (this.anim==='shoot') sprite = (this.frameTimer<0.08) ? ASSETS.fp4 : ASSETS.fp5;
+    else if (this.anim==='move') sprite = [ASSETS.fp1, ASSETS.fp2, ASSETS.fp3][this.frameIdx] || ASSETS.fp1;
+
+    if (sprite.ok) sprite.drawFull(ctx, 0, 0, this.w, this.h);
+    else { ctx.fillStyle='#3aa0ff'; ctx.fillRect(0,0,this.w,this.h); }
+    ctx.restore();
+  }
+}
