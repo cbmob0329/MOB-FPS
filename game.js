@@ -1,6 +1,10 @@
-// game.js
-// メイン：背景スクロール、入力、レンガ障害物、弾と爆発の衝突、描画
+// game.js (ESM)
 import { Player, Explosion, Smoke, ASSETS, GROUND_Y } from './player.js';
+
+const dbg = document.getElementById('debug');
+const dbgInfo = document.getElementById('dbgInfo');
+const dbgErr = document.getElementById('dbgErr');
+const setStatus = (s)=>{ dbg.firstElementChild.innerHTML = `<b>Status:</b> ${s}`; };
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -36,14 +40,8 @@ const world = {
   }
 };
 
-// 背景
+// 背景（無くても走る）
 world.bg.src = 'fst1.png';
-
-// 地面
-function drawGround() {
-  ctx.fillStyle = '#262d3a';
-  ctx.fillRect(0, GROUND_Y + 1, W, H - GROUND_Y - 1);
-}
 
 // 入力
 const input = {
@@ -77,7 +75,7 @@ document.querySelectorAll('button[data-key]').forEach(btn=>{
 class Brick {
   constructor(x) {
     this.x = x; this.y = GROUND_Y - 48; this.w = 64; this.h = 48;
-    this.hp = 150; this.dead = false; this.fade = 0; // 0→1
+    this.hp = 150; this.dead = false; this.fade = 0;
   }
   aabb(){ return {x:this.x, y:this.y, w:this.w, h:this.h}; }
   hit(dmg){
@@ -102,7 +100,11 @@ class Brick {
     ctx.save();
     if (this.dead) ctx.globalAlpha = Math.max(0, 1 - this.fade);
     if (asset.ok) ctx.drawImage(asset.img, dx, dy, this.w, this.h);
-    else { ctx.fillStyle='#7b4a3b'; ctx.fillRect(dx, dy, this.w, this.h); }
+    else {
+      // 目立つフォールバック
+      ctx.fillStyle = key==='ren1' ? '#ffb74d' : key==='ren2' ? '#ff7043' : key==='ren3' ? '#ef5350' : '#ffffff';
+      ctx.fillRect(dx, dy, this.w, this.h);
+    }
     ctx.restore();
   }
 }
@@ -128,48 +130,59 @@ function spawnBricks() {
   }
 }
 
-// カメラ（プレイヤー中心寄り）
+// カメラ
 function updateCamera() {
   const target = world.player.x - W*0.38;
   world.camX += (target - world.camX) * 0.12;
   if (world.camX < 0) world.camX = 0;
 }
 
-// 背景スクロール描画（タイリング）
+// 背景
 function drawBackground() {
   const img = world.bg;
   if (img.complete && img.naturalWidth>0){
     const par = 0.6;
     const scx = Math.floor(world.camX * par);
     const iw = img.naturalWidth, ih = img.naturalHeight;
-    const scale = Math.max(W/iw, (GROUND_Y+120)/ih);
+    const scale = Math.max(W/iw, (GROUND_Y+160)/ih);
     const drawW = iw*scale, drawH = ih*scale;
     let start = - (scx % drawW);
     for (let x = start; x < W; x += drawW) {
-      ctx.drawImage(img, x, GROUND_Y - drawH + 120, drawW, drawH);
+      ctx.drawImage(img, x, GROUND_Y - drawH + 160, drawW, drawH);
     }
   } else {
-    // フォールバック（画像未用意でも真っ暗回避）
-    ctx.fillStyle = '#0a1220'; ctx.fillRect(0,0,W,GROUND_Y);
-    ctx.fillStyle = '#0d1930';
-    for (let i=0;i<8;i++) ctx.fillRect(i*60, 200 + (i%2)*18, 50, 8);
+    // 明るいフォールバック
+    const skyTop = '#1e88e5', skyBottom = '#90caf9';
+    const grd = ctx.createLinearGradient(0,0,0,GROUND_Y);
+    grd.addColorStop(0, skyTop); grd.addColorStop(1, skyBottom);
+    ctx.fillStyle = grd; ctx.fillRect(0,0,W,GROUND_Y);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px ui-sans-serif';
+    ctx.fillText('RUNNING', 16, 32);
   }
 }
 
-// 弾と障害物の衝突
+// 地面
+function drawGround() {
+  // 明るい芝で分かりやすく
+  ctx.fillStyle = '#66bb6a';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+}
+
+// ヒット判定
 function rectHit(b, r){
   return b.x >= r.x && b.x <= r.x + r.w && b.y >= r.y && b.y <= r.y + r.h;
 }
 function handleCollisions(){
-  // 弾 vs レンガ
   for (const b of world.bullets){
     if (b.dead) continue;
-    // 地面衝突（グレネード）
+    // 地面
     if (b.kind === 'grenade' && b.y >= GROUND_Y - 6){
       b.dead = true;
       world.spawnExplosion(b.x, GROUND_Y - 12);
       continue;
     }
+    // レンガ
     for (const ob of world.obstacles){
       if (ob.toRemove) continue;
       if (rectHit(b, ob.aabb())){
@@ -184,7 +197,7 @@ function handleCollisions(){
       }
     }
   }
-  // 爆発の範囲ダメージ
+  // 爆発ダメージ
   for (const ef of world.effects){
     if (!(ef instanceof Explosion)) continue;
     const r2 = ef.r * ef.r;
@@ -200,55 +213,56 @@ function handleCollisions(){
   }
 }
 
-// メインループ
-let last = 0;
+// ループ
+let last = 0, frames = 0;
 function loop(t) {
   const now = t/1000; const dt = Math.min(0.033, now - last || 0.016); last = now;
 
-  // 更新
   world.player.step(dt, input, world);
   world.bullets.forEach(b=>b.step(dt));
   world.effects.forEach(e=>e.step(dt));
   world.obstacles.forEach(o=>o.step(dt));
   handleCollisions();
 
-  // 後処理
   world.bullets = world.bullets.filter(b=>!b.dead);
   world.effects = world.effects.filter(e=>!e.dead);
   world.obstacles = world.obstacles.filter(o=>!o.toRemove);
 
-  // カメラ
   updateCamera();
 
-  // 描画
   ctx.clearRect(0,0,W,H);
   drawBackground();
   drawGround();
-
-  // 障害物
   world.obstacles.forEach(o=>o.draw(ctx, world.camX));
-
-  // プレイヤー（画像未配置でも青い矩形が表示される）
   world.player.draw(ctx, world.camX);
-
-  // 弾/エフェクト
   world.bullets.forEach(b=>b.draw(ctx, world.camX));
   world.effects.forEach(e=>e.draw(ctx, world.camX));
 
-  // リロード表示
   const re = world.player.reload;
   const rtime = Math.max(re.rifle, re.smg, re.gl, re.shot);
   HUD.reload.textContent = rtime>0 ? `RELOAD ${rtime.toFixed(1)}s` : 'READY';
 
+  if (++frames === 1) setStatus('RUNNING (first frame ok)');
   requestAnimationFrame(loop);
 }
 
 // 初期化
 function init(){
-  // 背景ロード失敗でも動くようにだけonload設定（必須ではない）
-  world.bg.onload = ()=>{};
+  setStatus('INIT');
+  if (!canvas || !ctx){
+    dbgErr.style.display='block';
+    dbgErr.textContent = 'Canvas or 2D context not available.';
+    return;
+  }
   world.updateAmmoHUD(world.player.weapons);
   spawnBricks();
+  setStatus('START LOOP');
   requestAnimationFrame(loop);
 }
-init();
+
+// DOM準備後に開始（安全策）
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
