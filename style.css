@@ -1,13 +1,10 @@
 :root{
   --stage-w:420px; 
   --stage-h:720px;
-
-  /* 上下2段レイアウト */
   --controls-h: 160px; /* 下部の操作エリア固定高さ */
 
   --hud-bg:#0b0f17cc; 
   --fg:#e9eef7; 
-  --grid-gap:10px;
 }
 *{box-sizing:border-box;touch-action:manipulation}
 html,body{height:100%;margin:0;background:#000;color:var(--fg);font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial}
@@ -51,6 +48,18 @@ header .slot{
 header .slot span{font-weight:900;letter-spacing:.05em}
 header .slot b{min-width:22px;display:inline-block;text-align:right}
 header .reload{font-weight:700;opacity:.9}
+
+/* 追加：バージョン表示 */
+header.hud .version{
+  font-weight:800;
+  letter-spacing:.02em;
+  opacity:.9;
+  padding:2px 8px;
+  border:1px solid #2a3b56;
+  border-radius:8px;
+  background:#0d1523cc;
+  margin:0 8px;
+}
 
 /* 下部操作領域 */
 footer.pad{
