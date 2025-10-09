@@ -123,7 +123,7 @@ export class Smoke {
 
 export class Player {
   constructor(x, y) {
-    this.x = x; this.y = y; // 座標（左下基準で描画時は補正）
+    this.x = x; this.y = y;
     this.vx = 0; this.vy = 0;
     this.w = 48; this.h = 64;
     this.onGround = false;
@@ -133,7 +133,7 @@ export class Player {
     this.frameTimer = 0;
     this.frameIdx = 0;
 
-    // 武器状態
+    // 武器状態（仕様どおり）
     this.weapons = {
       rifle: { dmg: 12, rate: 0.28, ammoMax: 8, ammo: 8, reload: 2.3, speed: 960, range: 1.6 },
       smg:   { dmg: 8,  rate: 0.12, ammoMax:12, ammo:12, reload: 2.0, speed: 820, range: 1.1 },
@@ -141,7 +141,7 @@ export class Player {
       shot:  { dmg: 15, rate: 0.18, ammoMax: 9, ammo: 9, reload: 3.0, speed: 760, range: 0.45 },
     };
     this.cool = { rifle: new Timer(), smg: new Timer(), gl: new Timer(), shot: new Timer() };
-    this.reload = { rifle:0, smg:0, gl:0, shot:0 }; // 残り秒。>0ならリロード中
+    this.reload = { rifle:0, smg:0, gl:0, shot:0 };
     this.jumpPower = -560;
     this.moveSpeed = 220;
   }
@@ -196,12 +196,9 @@ export class Player {
     const w = this.weapons[kind];
     const cd = this.cool[kind];
     if (this.reload[kind] > 0) return; // リロード中
-    if (w.ammo <= 0) { // 自動リロード
-      this.reload[kind] = w.reload; w.ammo = w.ammoMax; return;
-    }
+    if (w.ammo <= 0) { this.reload[kind] = w.reload; w.ammo = w.ammoMax; return; }
     if (!cd.ready(w.rate)) return;
 
-    // 発射
     const dir = this.face;
     const muzzleX = this.x + dir * 26;
     const muzzleY = this.getFeetY() - this.h + 24;
@@ -214,7 +211,6 @@ export class Player {
         break;
       }
       case 'smg': {
-        // 少しばらつき
         const spread = (Math.random()-0.5) * 28;
         world.spawnBullet(new Bullet({
           x: muzzleX, y: muzzleY + spread*0.02, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'smg', size:3
@@ -222,7 +218,6 @@ export class Player {
         break;
       }
       case 'gl': {
-        // 放物線（上方向に初速）
         const vy = -420 + (Math.random()-0.5)*40;
         world.spawnBullet(new Bullet({
           x: muzzleX, y: muzzleY, vx: dir * w.speed*0.6, vy, life: w.range+0.3, dmg: w.dmg, kind:'grenade', size:5.5
@@ -230,9 +225,8 @@ export class Player {
         break;
       }
       case 'shot': {
-        // 3ペレット、短命
         for (let i=0;i<3;i++){
-          const ang = (Math.random()-0.5)*0.18; // ばらけ
+          const ang = (Math.random()-0.5)*0.18;
           const vx = Math.cos(ang) * w.speed * dir;
           const vy = Math.sin(ang) * w.speed * 0.1;
           world.spawnBullet(new Bullet({
@@ -247,17 +241,14 @@ export class Player {
     this.frameIdx = 0;
     this.frameTimer = 0;
 
-    // HUD更新
     world.updateAmmoHUD(this.weapons);
   }
 
   draw(ctx, camX) {
-    // 向き
     ctx.save();
     ctx.translate(Math.floor(this.x - camX), Math.floor(this.getDrawY()));
     if (this.face < 0) { ctx.scale(-1,1); ctx.translate(-this.w,0); }
 
-    // アニメ画像選択
     let sprite = ASSETS.fp;
     if (this.anim === 'shoot') sprite = (this.frameTimer < 0.08) ? ASSETS.fp4 : ASSETS.fp5;
     else if (this.anim === 'move') {
@@ -266,11 +257,9 @@ export class Player {
 
     if (sprite.ok) sprite.drawFull(ctx, 0, 0, this.w, this.h);
     else {
-      // 代替矩形（画像未配置でも見える）
-      ctx.fillStyle = '#66f';
-      ctx.fillRect(0, 0, this.w, this.h);
+      ctx.fillStyle = '#3aa0ff';           /* 目立つ青 */
+      ctx.fillRect(0, 0, this.w, this.h);  /* 画像無しでも見える */
     }
-
     ctx.restore();
   }
 }
