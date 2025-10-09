@@ -1,5 +1,5 @@
 // player.js
-// プレイヤー本体と武器挙動（弾/リロード/アニメ）を担当
+// プレイヤー本体と武器挙動（弾/リロード/アニメ）
 
 export class Asset {
   constructor(src) {
@@ -8,33 +8,25 @@ export class Asset {
     this.ok = false;
     this.img.onload = () => { this.ok = true; };
   }
-  draw(ctx, sx, sy, sw, sh, dx, dy, dw, dh) {
-    if (this.ok) ctx.drawImage(this.img, sx, sy, sw, sh, dx, dy, dw, dh);
-  }
-  drawFull(ctx, dx, dy, dw, dh) {
-    if (this.ok) ctx.drawImage(this.img, dx, dy, dw, dh);
-  }
+  drawFull(ctx, dx, dy, dw, dh) { if (this.ok) ctx.drawImage(this.img, dx, dy, dw, dh); }
 }
 
 export const ASSETS = {
-  // プレイヤー
   fp: new Asset('fp.png'),
   fp1: new Asset('fp1.png'),
   fp2: new Asset('fp2.png'),
   fp3: new Asset('fp3.png'),
   fp4: new Asset('fp4.png'),
   fp5: new Asset('fp5.png'),
-  // 武器アセット（任意表示用）
   ta1: new Asset('TA1.png'),
   ta2: new Asset('TA2.png'),
   ta3: new Asset('TA3.png'),
   ta4: new Asset('TA4.png'),
-  // 爆発/煙
   explosion: new Asset('moe.png'),
   smoke: new Asset('moku.png'),
 };
 
-export const GROUND_Y = 600; // 地面ライン（Canvas内Y）
+export const GROUND_Y = 460; // キャンバス高さ560px中の地面ライン
 
 export class Timer {
   constructor() { this.t = 0; }
@@ -47,31 +39,55 @@ export class Bullet {
     this.x = x; this.y = y; this.vx = vx; this.vy = vy;
     this.life = life; this.t = 0; this.dmg = dmg; this.kind = kind; this.size = size;
     this.dead = false;
+    this.trail = []; // 簡易トレーサー
   }
   step(dt) {
     this.t += dt;
+    // トレイル（最後の位置を保持）
+    this.trail.push({x:this.x, y:this.y});
+    if (this.trail.length > 6) this.trail.shift();
+
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    if (this.kind === 'grenade') {
-      this.vy += 980 * dt * 0.5; // 簡易重力
-    }
+    if (this.kind === 'grenade') this.vy += 980 * dt * 0.5; // 簡易重力
     if (this.t >= this.life) this.dead = true;
   }
   draw(ctx, camX) {
+    const sx = Math.floor(this.x - camX), sy = Math.floor(this.y);
+
+    // トレイル（薄い線）
+    if (this.trail.length >= 2) {
+      ctx.save();
+      ctx.globalAlpha = 0.65;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.floor(this.trail[0].x - camX), Math.floor(this.trail[0].y));
+      for (let i=1;i<this.trail.length;i++){
+        ctx.lineTo(Math.floor(this.trail[i].x - camX), Math.floor(this.trail[i].y));
+      }
+      ctx.strokeStyle = (this.kind==='grenade') ? '#fff59d' : '#e3f2fd';
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.save();
-    ctx.fillStyle = '#d7f0ff';
     switch (this.kind) {
       case 'rifle':
+        ctx.fillStyle = '#bbdefb';
+        ctx.fillRect(sx, sy, this.size+1, this.size+1);
+        break;
       case 'smg':
-        ctx.fillRect(Math.floor(this.x - camX), Math.floor(this.y), this.size, this.size);
+        ctx.fillStyle = '#e1f5fe';
+        ctx.fillRect(sx, sy, this.size+1, this.size+1);
         break;
       case 'shot':
-        ctx.fillRect(Math.floor(this.x - camX), Math.floor(this.y), this.size, this.size);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(sx, sy, this.size+1.5, this.size+1.5);
         break;
       case 'grenade':
-        ctx.fillStyle = '#a2c0ff';
+        ctx.fillStyle = '#fff59d';
         ctx.beginPath();
-        ctx.arc(Math.floor(this.x - camX), Math.floor(this.y), this.size * 0.8, 0, Math.PI * 2);
+        ctx.arc(sx, sy, this.size, 0, Math.PI * 2);
         ctx.fill();
         break;
     }
@@ -127,22 +143,22 @@ export class Player {
     this.vx = 0; this.vy = 0;
     this.w = 48; this.h = 64;
     this.onGround = false;
-    this.face = 1; // 1:右
-    // アニメ
+    this.face = 1; // 1:右向き
+
     this.anim = 'idle'; // idle, move, shoot
     this.frameTimer = 0;
     this.frameIdx = 0;
 
-    // 武器状態（仕様どおり）
+    // 武器（指定どおり）
     this.weapons = {
       rifle: { dmg: 12, rate: 0.28, ammoMax: 8, ammo: 8, reload: 2.3, speed: 960, range: 1.6 },
       smg:   { dmg: 8,  rate: 0.12, ammoMax:12, ammo:12, reload: 2.0, speed: 820, range: 1.1 },
       gl:    { dmg: 50, rate: 0.7,  ammoMax: 3, ammo: 3, reload: 5.0, speed: 520, range: 1.2 },
-      shot:  { dmg: 15, rate: 0.18, ammoMax: 9, ammo: 9, reload: 3.0, speed: 760, range: 0.45 },
+      shot:  { dmg: 15, rate: 0.20, ammoMax: 9, ammo: 9, reload: 3.0, speed: 760, range: 0.5 },
     };
     this.cool = { rifle: new Timer(), smg: new Timer(), gl: new Timer(), shot: new Timer() };
     this.reload = { rifle:0, smg:0, gl:0, shot:0 };
-    this.jumpPower = -560;
+    this.jumpPower = -520;
     this.moveSpeed = 220;
   }
 
@@ -164,28 +180,28 @@ export class Player {
 
     // 重力
     this.vy += 1200 * dt;
+
     // 位置更新
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // 地面判定
+    // 地面
     if (this.y >= GROUND_Y) {
       this.y = GROUND_Y; this.vy = 0; this.onGround = true;
     }
 
     // アニメ
-    if (Math.abs(this.vx) > 1) this.anim = 'move';
-    else this.anim = 'idle';
+    this.anim = (Math.abs(this.vx) > 1) ? 'move' : 'idle';
     this.frameTimer += dt;
     if (this.anim === 'move' && this.frameTimer > 0.12) {
       this.frameTimer = 0; this.frameIdx = (this.frameIdx + 1) % 3;
     }
 
-    // クールダウン/リロード
+    // CD/リロード
     for (const k of Object.keys(this.cool)) this.cool[k].step(dt);
     for (const k of Object.keys(this.reload)) this.reload[k] = Math.max(0, this.reload[k] - dt);
 
-    // 射撃入力
+    // 射撃
     if (input.fire_rifle) this.tryFire('rifle', world);
     if (input.fire_smg)   this.tryFire('smg', world);
     if (input.fire_gl)    this.tryFire('gl', world);
@@ -195,7 +211,7 @@ export class Player {
   tryFire(kind, world) {
     const w = this.weapons[kind];
     const cd = this.cool[kind];
-    if (this.reload[kind] > 0) return; // リロード中
+    if (this.reload[kind] > 0) return;
     if (w.ammo <= 0) { this.reload[kind] = w.reload; w.ammo = w.ammoMax; return; }
     if (!cd.ready(w.rate)) return;
 
@@ -206,31 +222,31 @@ export class Player {
     switch (kind) {
       case 'rifle': {
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'rifle', size:3.5
+          x: muzzleX, y: muzzleY, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'rifle', size:4
         }));
         break;
       }
       case 'smg': {
-        const spread = (Math.random()-0.5) * 28;
+        const spread = (Math.random()-0.5) * 22;
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY + spread*0.02, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'smg', size:3
+          x: muzzleX, y: muzzleY + spread*0.02, vx: dir * w.speed, life: w.range, dmg: w.dmg, kind:'smg', size:4
         }));
         break;
       }
       case 'gl': {
         const vy = -420 + (Math.random()-0.5)*40;
         world.spawnBullet(new Bullet({
-          x: muzzleX, y: muzzleY, vx: dir * w.speed*0.6, vy, life: w.range+0.3, dmg: w.dmg, kind:'grenade', size:5.5
+          x: muzzleX, y: muzzleY, vx: dir * w.speed*0.6, vy, life: w.range+0.3, dmg: w.dmg, kind:'grenade', size:6
         }));
         break;
       }
       case 'shot': {
         for (let i=0;i<3;i++){
-          const ang = (Math.random()-0.5)*0.18;
+          const ang = (Math.random()-0.5)*0.22;
           const vx = Math.cos(ang) * w.speed * dir;
-          const vy = Math.sin(ang) * w.speed * 0.1;
+          const vy = Math.sin(ang) * w.speed * 0.12;
           world.spawnBullet(new Bullet({
-            x: muzzleX, y: muzzleY, vx, vy, life: w.range, dmg: w.dmg, kind:'shot', size:3.8
+            x: muzzleX, y: muzzleY, vx, vy, life: w.range, dmg: w.dmg, kind:'shot', size:4.2
           }));
         }
         break;
@@ -240,7 +256,6 @@ export class Player {
     this.anim = 'shoot';
     this.frameIdx = 0;
     this.frameTimer = 0;
-
     world.updateAmmoHUD(this.weapons);
   }
 
@@ -251,15 +266,10 @@ export class Player {
 
     let sprite = ASSETS.fp;
     if (this.anim === 'shoot') sprite = (this.frameTimer < 0.08) ? ASSETS.fp4 : ASSETS.fp5;
-    else if (this.anim === 'move') {
-      sprite = [ASSETS.fp1, ASSETS.fp2, ASSETS.fp3][this.frameIdx] || ASSETS.fp1;
-    }
+    else if (this.anim === 'move') sprite = [ASSETS.fp1, ASSETS.fp2, ASSETS.fp3][this.frameIdx] || ASSETS.fp1;
 
     if (sprite.ok) sprite.drawFull(ctx, 0, 0, this.w, this.h);
-    else {
-      ctx.fillStyle = '#3aa0ff';           /* 目立つ青 */
-      ctx.fillRect(0, 0, this.w, this.h);  /* 画像無しでも見える */
-    }
+    else { ctx.fillStyle = '#3aa0ff'; ctx.fillRect(0, 0, this.w, this.h); }
     ctx.restore();
   }
 }
