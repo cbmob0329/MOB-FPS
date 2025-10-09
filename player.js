@@ -24,7 +24,7 @@ export const ASSETS = {
   fp3: new Asset('fp3.png'),
   fp4: new Asset('fp4.png'),
   fp5: new Asset('fp5.png'),
-  // 武器アイコン/本体（任意表示）
+  // 武器アセット（任意表示用）
   ta1: new Asset('TA1.png'),
   ta2: new Asset('TA2.png'),
   ta3: new Asset('TA3.png'),
@@ -266,7 +266,7 @@ export class Player {
 
     if (sprite.ok) sprite.drawFull(ctx, 0, 0, this.w, this.h);
     else {
-      // 代替矩形
+      // 代替矩形（画像未配置でも見える）
       ctx.fillStyle = '#66f';
       ctx.fillRect(0, 0, this.w, this.h);
     }
