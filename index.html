@@ -23,21 +23,22 @@
           <div class="reload" id="reloadText">READY</div>
         </header>
 
+        <!-- ゲーム画面（内部解像度は固定し、CSSスケールでフィット） -->
         <canvas id="game" width="420" height="560" aria-label="game canvas"></canvas>
       </section>
 
-      <!-- 下部：操作パッド -->
+      <!-- 下部：操作パッド（可変高さで常に見える） -->
       <footer class="pad">
         <div class="dpad">
-          <button class="btn" data-key="ArrowLeft">◀</button>
-          <button class="btn" data-key="ArrowRight">▶</button>
+          <button class="btn" data-key="ArrowLeft" aria-label="left">◀</button>
+          <button class="btn" data-key="ArrowRight" aria-label="right">▶</button>
         </div>
         <div class="apad">
-          <button class="btn act" data-key="KeyZ">■</button>
-          <button class="btn act" data-key="KeyX">▲</button>
-          <button class="btn act" data-key="KeyC">●</button>
-          <button class="btn act" data-key="KeyV">◎</button>
-          <button class="btn jump" data-key="Space">×</button>
+          <button class="btn act"  data-key="KeyZ"   aria-label="rifle">■</button>
+          <button class="btn act"  data-key="KeyX"   aria-label="smg">▲</button>
+          <button class="btn act"  data-key="KeyC"   aria-label="grenade">●</button>
+          <button class="btn act"  data-key="KeyV"   aria-label="shotgun">◎</button>
+          <button class="btn jump" data-key="Space"  aria-label="jump">×</button>
         </div>
       </footer>
     </div>
