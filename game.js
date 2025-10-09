@@ -1,7 +1,6 @@
 // game.js
 // メイン：背景スクロール、入力、レンガ障害物、弾と爆発の衝突、描画
-
-import { Player, Bullet, Explosion, Smoke, ASSETS, GROUND_Y } from './player.js';
+import { Player, Explosion, Smoke, ASSETS, GROUND_Y } from './player.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -23,7 +22,6 @@ const world = {
   bullets: [],
   effects: [],
   bg: new Image(),
-  bg2: new Image(),
   ready: false,
   spawnBullet(b){ this.bullets.push(b); },
   spawnExplosion(x,y){
@@ -40,7 +38,6 @@ const world = {
 
 // 背景
 world.bg.src = 'fst1.png';
-world.bg2.src = 'fst1.png';
 
 // 地面
 function drawGround() {
@@ -95,33 +92,30 @@ class Brick {
     }
   }
   draw(ctx, camX){
-    let img = 'ren1';
-    if (this.hp <= 0) img = 'ren4';
-    else if (this.hp <= 50) img = 'ren3';
-    else if (this.hp <= 100) img = 'ren2';
+    let key = 'ren1';
+    if (this.hp <= 0) key = 'ren4';
+    else if (this.hp <= 50) key = 'ren3';
+    else if (this.hp <= 100) key = 'ren2';
 
-    const asset = getBrickAsset(img);
+    const asset = BRICK_ASSET[key];
     const dx = Math.floor(this.x - camX), dy = Math.floor(this.y);
     ctx.save();
     if (this.dead) ctx.globalAlpha = Math.max(0, 1 - this.fade);
-    if (asset?.ok) asset.drawFull(ctx, dx, dy, this.w, this.h);
+    if (asset.ok) ctx.drawImage(asset.img, dx, dy, this.w, this.h);
     else { ctx.fillStyle='#7b4a3b'; ctx.fillRect(dx, dy, this.w, this.h); }
     ctx.restore();
   }
 }
 
 const BRICK_ASSET = {
-  ren1: new Image(), ren2: new Image(), ren3: new Image(), ren4: new Image()
+  ren1: { img: new Image(), ok: false },
+  ren2: { img: new Image(), ok: false },
+  ren3: { img: new Image(), ok: false },
+  ren4: { img: new Image(), ok: false },
 };
-BRICK_ASSET.ren1.src = 'ren1.png';
-BRICK_ASSET.ren2.src = 'ren2.png';
-BRICK_ASSET.ren3.src = 'ren3.png';
-BRICK_ASSET.ren4.src = 'ren4.png';
-
-function getBrickAsset(key){
-  const img = BRICK_ASSET[key];
-  if (!img) return null;
-  return { ok: img.complete && img.naturalWidth>0, drawFull:(c,x,y,w,h)=>c.drawImage(img,x,y,w,h) };
+for (const [k, v] of Object.entries(BRICK_ASSET)) {
+  v.img.src = `${k}.png`;
+  v.img.onload = ()=>{ v.ok = true; };
 }
 
 // ランダム配置
@@ -155,7 +149,7 @@ function drawBackground() {
       ctx.drawImage(img, x, GROUND_Y - drawH + 120, drawW, drawH);
     }
   } else {
-    // フォールバック
+    // フォールバック（画像未用意でも真っ暗回避）
     ctx.fillStyle = '#0a1220'; ctx.fillRect(0,0,W,GROUND_Y);
     ctx.fillStyle = '#0d1930';
     for (let i=0;i<8;i++) ctx.fillRect(i*60, 200 + (i%2)*18, 50, 8);
@@ -166,7 +160,7 @@ function drawBackground() {
 function rectHit(b, r){
   return b.x >= r.x && b.x <= r.x + r.w && b.y >= r.y && b.y <= r.y + r.h;
 }
-function handleCollisions(dt){
+function handleCollisions(){
   // 弾 vs レンガ
   for (const b of world.bullets){
     if (b.dead) continue;
@@ -190,7 +184,7 @@ function handleCollisions(dt){
       }
     }
   }
-  // 爆発のダメージ付与（範囲）
+  // 爆発の範囲ダメージ
   for (const ef of world.effects){
     if (!(ef instanceof Explosion)) continue;
     const r2 = ef.r * ef.r;
@@ -216,7 +210,7 @@ function loop(t) {
   world.bullets.forEach(b=>b.step(dt));
   world.effects.forEach(e=>e.step(dt));
   world.obstacles.forEach(o=>o.step(dt));
-  handleCollisions(dt);
+  handleCollisions();
 
   // 後処理
   world.bullets = world.bullets.filter(b=>!b.dead);
@@ -234,7 +228,7 @@ function loop(t) {
   // 障害物
   world.obstacles.forEach(o=>o.draw(ctx, world.camX));
 
-  // プレイヤー
+  // プレイヤー（画像未配置でも青い矩形が表示される）
   world.player.draw(ctx, world.camX);
 
   // 弾/エフェクト
@@ -251,6 +245,8 @@ function loop(t) {
 
 // 初期化
 function init(){
+  // 背景ロード失敗でも動くようにだけonload設定（必須ではない）
+  world.bg.onload = ()=>{};
   world.updateAmmoHUD(world.player.weapons);
   spawnBricks();
   requestAnimationFrame(loop);
